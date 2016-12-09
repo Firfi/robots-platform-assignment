@@ -1,4 +1,6 @@
-`sbt test` to run tests
+`sbt test` to run tests;
+
+
 `sbt run` and paste the test input (i.e. 
 
 
