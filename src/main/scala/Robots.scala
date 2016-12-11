@@ -45,7 +45,7 @@ object DroneCalculator {
   val directions = Array(North, East, South, West)
   val directionIndexes = directions.zipWithIndex.toMap
 
-  def moveCoords(coords: Coords, d: Direction, field: Field): Coords = {
+  def moveCoords(coords: Coords, d: Direction, field: Field, curDrones: Seq[Drone]): Coords = {
     val newCoords = d match {
       case North => coords.copy(y = coords.y + 1)
       case East => coords.copy(x = coords.x + 1)
@@ -56,27 +56,36 @@ object DroneCalculator {
       println(s"wrong coords ${newCoords.x} ${newCoords.y}")
       // ignore wrong coords
       coords
+    } else if (curDrones.exists {d => d.coords == newCoords}) {
+      println(s"drone already exists on coords ${newCoords.x} ${newCoords.y}")
+      // ignore wrong coords
+      coords
     } else newCoords
   }
 
-  def moveDrone(field: Field, d: Drone, a: Action): Drone = {
+  def moveDrone(field: Field, curDrones: Seq[Drone], d: Drone, a: Action): Drone = {
     val index = directionIndexes(d.direction)
     def turn(where: Int) = directions(Math.floorMod(index + where, directions.length))
     a match {
       case TurnLeft => d.copy(direction = turn(-1))
       case TurnRight => d.copy(direction = turn(1))
-      case Move => d.copy(coords = moveCoords(d.coords, d.direction, field))
+      case Move => d.copy(coords = moveCoords(d.coords, d.direction, field, curDrones))
     }
   }
   @tailrec
-  def moveDrone(field: Field, d: Drone, actions: Seq[Action]): Drone = {
+  def moveDrone(field: Field, curDrones: Seq[Drone]/*can be hash of coords, we need only positions*/,
+                d: Drone, actions: Seq[Action]): Drone = {
     actions.toList match {
       case Nil => d
-      case a :: nextActions => moveDrone(field, moveDrone(field, d, a), nextActions)
+      case a :: nextActions => moveDrone(field, curDrones, moveDrone(field, curDrones, d, a), nextActions)
     }
   }
   def moveDrones(field: Field, robots: Seq[Alias.Robot]): Seq[Drone] = {
-    robots.map { case (d: Drone, actions: Seq[Action]) => moveDrone(field, d, actions) }
+    robots.zipWithIndex.foldLeft(robots.map(_._1)) { case (curDrones, ((d: Drone, actions: Seq[Action]), i: Int)) =>
+      curDrones.updated(i, moveDrone(field, curDrones.patch(i, Nil, 1)/*no need to be afraid moving over itself*/,
+        d, actions)
+      )
+    }
   }
 }
 
@@ -89,6 +98,7 @@ object Robots {
     case Seq(rightX: Int, topY: Int, _*) => Field(rightX + 1, topY + 1)
   }
   lazy val robots: Seq[Alias.Robot] = {
+    @tailrec
     def _read(acc: Seq[Alias.Robot]): Seq[Alias.Robot] = {
       readRobot match {
         case Some(robot) => _read(robot +: acc)

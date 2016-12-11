@@ -13,4 +13,13 @@ class RobotsSpec extends FlatSpec with Matchers {
     ) should contain inOrderOnly (Drone(Coords(1, 3), North), Drone(Coords(5, 1), East))
   }
 
+  "DroneCalculator" should "not move drones over each other" in {
+    DroneCalculator.moveDrones(Field(6, 6),
+      List(
+        Drone(Coords(1, 3), North)->List(),
+        Drone(Coords(1, 1), North)->List(Move, Move, Move, Move, Move, Move, Move, Move, Move, Move, Move, Move)
+      )
+    ) should contain inOrderOnly (Drone(Coords(1, 3), North), Drone(Coords(1, 2), North))
+  }
+
 }
